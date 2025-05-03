@@ -1,37 +1,32 @@
-#pragma once
-
-#include "driver/mcpwm_.h"
 #include "driver/mcpwm_cap.h"
-#include "driver/mcpwm_timer.h"
-#include "esp_log.h"
-#include "esp_attr.h"
-#include <map>
-#include <cmath>
+#include "freertos/portmacro.h"
 
-Encoder::Encoder(int pin, int offset, mcpwm_unit_t unit, mcpwm_capture_channel_id_t channel)
-    : encoderPin(pin), offset(offset), mcpwm_unit(unit), capture_channel(channel)
-{
-}
+class Encoder {
+public:
+    Encoder(int pin, int offset = 0, int group = 0);
+    void init();
+    float getAngle();
+    int getRawPosition();
 
-// Implementations only (NOT the full class definition)
-void Encoder::init()
-{
-    mcpwm_capture_config_t capture_config = {
-        .cap_edge = MCPWM_BOTH_EDGE,
-        .cap_prescale = 0,
-        .capture_cb = capture_callback,
-        .user_data = this,
-    };
+private:
+    static bool capture_callback(mcpwm_cap_channel_handle_t chan,
+                                 const mcpwm_capture_event_data_t *edata,
+                                 void *user_data);
 
-    mcpwm_capture_enable_channel(mcpwm_unit, capture_channel, &capture_config);
-}
+    int encoderPin;
+    int offset;
+    int group_id;
+    bool cycle_valid = false;
 
-float Encoder::getAngle()
-{
-    return fmodf(angle_degrees + offset, 360.0f);
-}
+    mcpwm_cap_timer_handle_t cap_timer = nullptr;
+    mcpwm_cap_channel_handle_t cap_channel = nullptr;
 
-int Encoder::getRawPosition()
-{
-    return static_cast<int>((getAngle() / 360.0f) * ENCODER_RESOLUTION) % ENCODER_RESOLUTION;
-}
+    volatile uint32_t last_rising_edge = 0;
+    volatile uint32_t prev_rising_edge = 0;
+    volatile uint32_t last_falling_edge = 0;
+    // volatile uint32_t period = 1;
+    volatile uint32_t high_time = 1;
+    volatile uint32_t low_time = 1;
+
+    portMUX_TYPE spinlock = portMUX_INITIALIZER_UNLOCKED;
+};

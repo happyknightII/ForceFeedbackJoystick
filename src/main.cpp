@@ -7,14 +7,14 @@ extern "C"
 {
     void vTaskFunction(void *pvParameters) 
     {
-        Encoder encoder(16); // Initialize encoder with GPIO pin 16
+        Encoder encoder(4); // Initialize encoder with GPIO pin 16
         encoder.init(); // Initialize MCPWM capture
 
         while (true) 
         {
             float angle = encoder.getAngle(); // Read encoder angle
             ESP_LOGI("Encoder Task", "Angle: %.2f degrees", angle); // Print angle to serial
-            
+
             vTaskDelay(pdMS_TO_TICKS(1000)); // Delay for 1 second
         }
     }
