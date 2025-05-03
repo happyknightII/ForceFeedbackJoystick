@@ -27,7 +27,7 @@ void Encoder::init()
             .pos_edge = true,
             .neg_edge = true,
             .pull_up = false,
-            .pull_down = true,
+            .pull_down = false,
             .invert_cap_signal = false,
             .io_loop_back = false
         }
@@ -48,19 +48,14 @@ bool Encoder::capture_callback(mcpwm_cap_channel_handle_t chan, const mcpwm_capt
     auto* encoder = static_cast<Encoder*>(user_data);
     if (!encoder) return false;
 
-    uint32_t current_time = edata->cap_value;
-
     portENTER_CRITICAL_ISR(&encoder->spinlock);
 
     if (edata->cap_edge == MCPWM_CAP_EDGE_POS) {
-        encoder->prev_rising_edge = encoder->last_rising_edge;
-        encoder->last_rising_edge = current_time;
-        encoder->low_time = encoder->last_rising_edge - encoder->prev_rising_edge;
+        encoder->last_rising_edge = edata->cap_value;
+        encoder->low_time = encoder->last_rising_edge - encoder->last_falling_edge;
     } else if (edata->cap_edge == MCPWM_CAP_EDGE_NEG) {
-        if (encoder->last_rising_edge != 0 && current_time > encoder->last_rising_edge) {
-            encoder->last_falling_edge = current_time;
-            encoder->high_time = encoder->last_falling_edge - encoder->last_rising_edge;
-        }
+        encoder->last_falling_edge = edata->cap_value;
+        encoder->high_time = encoder->last_falling_edge - encoder->last_rising_edge;
     }
 
     portEXIT_CRITICAL_ISR(&encoder->spinlock);
@@ -78,6 +73,7 @@ float Encoder::getAngle()
 
     if (p == 0) return 0.0f;
     ESP_LOGI(TAG, "Period: %u, High Time: %u", (unsigned)p, (unsigned)h);
+    ESP_LOGI(TAG, "Last Rising Edge: %u, Last Falling Edge: %u", (unsigned)last_rising_edge, (unsigned)last_falling_edge);
     float duty = static_cast<float>(h) / static_cast<float>(p);
     // duty = std::clamp(duty, 0.0f, 1.0f);
     float angle = duty * 360.0f;

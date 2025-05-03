@@ -1,46 +1,50 @@
 import serial
+import re
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from collections import deque
 
-# ===== CONFIGURATION =====
-SERIAL_PORT = "COM8"  # Change to your ESP32 port
+# Adjust this to match your serial port and baud rate
+SERIAL_PORT = "COM8"  # or '/dev/ttyUSB0' on Linux/Mac
 BAUD_RATE = 115200
-MAX_POINTS = 5000  # How many points to keep on screen
 
-# ===== INITIALIZATION =====
+# Buffer size for plotting
+MAX_POINTS = 500
+
+# Compile regex to extract float value
+angle_regex = re.compile(r"Angle:\s+([-+]?[0-9]*\.?[0-9]+)")
+
+# Initialize serial connection
 ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
+
+# Data buffers
+angle_data = deque(maxlen=MAX_POINTS)
 time_data = deque(maxlen=MAX_POINTS)
-level_data = deque(maxlen=MAX_POINTS)
+time_counter = 0
+
+
+def update_plot(frame):
+    global time_counter
+    while ser.in_waiting:
+        line = ser.readline().decode(errors="ignore").strip()
+        match = angle_regex.search(line)
+        if match:
+            angle = float(match.group(1))
+            angle_data.append(angle)
+            time_data.append(time_counter)
+            time_counter += 1
+
+    ax.clear()
+    ax.plot(time_data, angle_data, label="Angle (degrees)")
+    ax.set_ylim(0, 360)
+    ax.set_xlabel("Time (samples)")
+    ax.set_ylabel("Angle (°)")
+    ax.set_title("Real-Time Encoder Angle")
+    ax.legend()
+    ax.grid(True)
+
 
 fig, ax = plt.subplots()
-(line,) = ax.plot([], [], lw=2)
-ax.set_ylim(-0.2, 1.2)
-ax.set_xlabel("Time (ms)")
-ax.set_ylabel("GPIO Level")
-ax.set_title("Live GPIO Level Plot")
-
-
-def update(frame):
-    while ser.in_waiting:
-        try:
-            line_raw = ser.readline().decode().strip()
-            if line_raw.startswith("timestamp_us"):
-                continue  # header
-            if "," not in line_raw:
-                continue
-            t_us, level = map(int, line_raw.split(","))
-            time_data.append(t_us / 1000.0)  # convert to ms
-            level_data.append(level)
-        except Exception as e:
-            print("Parse error:", e)
-
-    if time_data:
-        line.set_data(time_data, level_data)
-        ax.set_xlim(time_data[0], time_data[-1])
-    return (line,)
-
-
-ani = animation.FuncAnimation(fig, update, interval=50)
+ani = animation.FuncAnimation(fig, update_plot, interval=10)
 plt.tight_layout()
 plt.show()

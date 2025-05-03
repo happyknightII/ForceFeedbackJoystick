@@ -1,6 +1,11 @@
 #include "driver/mcpwm_cap.h"
 #include "freertos/portmacro.h"
 
+struct CaptureData {
+    mcpwm_capture_event_data_t event_data;
+    uint32_t timestamp;
+};
+
 class Encoder {
 public:
     Encoder(int pin, int offset = 0, int group = 0);
