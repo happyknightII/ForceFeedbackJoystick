@@ -8,7 +8,9 @@
       "esp_adc_cal.h": "c",
       "freertos.h": "c",
       "task.h": "c",
-      "as5600.h": "c"
+      "as5600.h": "c",
+      "foc.h": "c",
+      "math.h": "c"
     }
   }
   

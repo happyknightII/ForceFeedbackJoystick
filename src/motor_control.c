@@ -7,6 +7,7 @@
 
 #define PWM_FREQ_HZ 20000
 #define TAG "motor"
+#define MAX_DUTY_PERCENT 50.0f  // Scale factor to protect motor (11.5V on 20V supply)
 
 static mcpwm_timer_handle_t timers[3];
 static mcpwm_oper_handle_t operators[3];
@@ -68,9 +69,21 @@ void init_motor_pwm() {
     set_pwm_duty(50.0f, 50.0f, 50.0f);  // Initial 50% duty
 }
 
+
 void set_pwm_duty(float u, float v, float w) {
-    float duties[3] = { u, v, w };
+    float scale = MAX_DUTY_PERCENT / 100.0f;  // e.g. 0.5 for 50%
+
+    float duties[3] = {
+        u * scale,
+        v * scale,
+        w * scale
+    };
+
     for (int i = 0; i < 3; i++) {
+        // Clamp for safety
+        if (duties[i] > MAX_DUTY_PERCENT) duties[i] = MAX_DUTY_PERCENT;
+        if (duties[i] < 0.0f) duties[i] = 0.0f;
+
         uint32_t compare_ticks = (duties[i] / 100.0f) * (1e6 / PWM_FREQ_HZ);
         ESP_ERROR_CHECK(mcpwm_comparator_set_compare_value(comparators[i], compare_ticks));
     }

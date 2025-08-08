@@ -1,6 +1,11 @@
 #include "as5600.h"
 #include "driver/i2c.h"
 #include "esp_log.h"
+#include "esp_timer.h"
+#include <math.h>
+
+static float prev_angle_rad = 0.0f;
+static uint32_t prev_time_us = 0;
 
 #define I2C_MASTER_SCL_IO 4
 #define I2C_MASTER_SDA_IO 5
@@ -53,4 +58,23 @@ float as5600_read_angle_deg(void) {
     uint16_t raw = as5600_read_raw_angle();
     if (raw == 0xFFFF) return -1.0f;
     return (raw * 360.0f) / 4096.0f;
+}
+
+
+
+float compute_velocity(float current_angle_rad) {
+    uint32_t now_us = esp_timer_get_time();
+    float dt = (now_us - prev_time_us) / 1e6f;  // seconds
+    if (dt == 0) return 0;
+
+    float dtheta = current_angle_rad - prev_angle_rad;
+
+    // Handle angle wraparound
+    if (dtheta > M_PI) dtheta -= M_2_PI;
+    if (dtheta < -M_PI) dtheta += M_2_PI;
+
+    prev_angle_rad = current_angle_rad;
+    prev_time_us = now_us;
+
+    return dtheta / dt;  // rad/s
 }
