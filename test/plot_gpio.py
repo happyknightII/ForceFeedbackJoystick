@@ -1,50 +1,52 @@
 import serial
-import re
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
 from collections import deque
 
-# Adjust this to match your serial port and baud rate
-SERIAL_PORT = "COM8"  # or '/dev/ttyUSB0' on Linux/Mac
+# === CONFIGURATION ===
+SERIAL_PORT = "COM8"  # Update this to your actual port
 BAUD_RATE = 115200
+WINDOW_SIZE = 100  # Number of points to display
+PLOT_REFRESH_RATE = 0.01  # Seconds between frame updates
 
-# Buffer size for plotting
-MAX_POINTS = 500
-
-# Compile regex to extract float value
-angle_regex = re.compile(r"Angle:\s+([-+]?[0-9]*\.?[0-9]+)")
-
-# Initialize serial connection
+# === SETUP ===
 ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
+plt.ion()  # Interactive mode ON
 
-# Data buffers
-angle_data = deque(maxlen=MAX_POINTS)
-time_data = deque(maxlen=MAX_POINTS)
-time_counter = 0
+# Deque to store voltage samples
+voltage_data = deque([0.0] * WINDOW_SIZE, maxlen=WINDOW_SIZE)
 
-
-def update_plot(frame):
-    global time_counter
-    while ser.in_waiting:
-        line = ser.readline().decode(errors="ignore").strip()
-        match = angle_regex.search(line)
-        if match:
-            angle = float(match.group(1))
-            angle_data.append(angle)
-            time_data.append(time_counter)
-            time_counter += 1
-
-    ax.clear()
-    ax.plot(time_data, angle_data, label="Angle (degrees)")
-    ax.set_ylim(0, 360)
-    ax.set_xlabel("Time (samples)")
-    ax.set_ylabel("Angle (°)")
-    ax.set_title("Real-Time Encoder Angle")
-    ax.legend()
-    ax.grid(True)
-
-
+# Initialize plot
 fig, ax = plt.subplots()
-ani = animation.FuncAnimation(fig, update_plot, interval=10)
-plt.tight_layout()
-plt.show()
+(line,) = ax.plot(range(WINDOW_SIZE), voltage_data)
+ax.set_ylim(0, 3.3)
+ax.set_xlim(0, WINDOW_SIZE)
+ax.set_title("Live Voltage Plot")
+ax.set_xlabel("Sample")
+ax.set_ylabel("Voltage (V)")
+fig.tight_layout()
+
+# === LOOP ===
+try:
+    while True:
+        raw_line = ser.readline().decode(errors="ignore").strip()
+        if raw_line.startswith("Voltage"):
+            try:
+                # Example line: "Voltage at GPIO 4: 2.45 V (raw: 3083)"
+                parts = raw_line.split(":")[1].split("V")[0].strip()
+                voltage = float(parts)
+                voltage_data.append(voltage)
+
+                # Update plot
+                line.set_ydata(voltage_data)
+                line.set_xdata(range(len(voltage_data)))
+                ax.set_xlim(0, len(voltage_data))
+                fig.canvas.draw()
+                fig.canvas.flush_events()
+                plt.pause(PLOT_REFRESH_RATE)
+            except Exception as e:
+                print(f"[Parse Error] '{raw_line}': {e}")
+
+except KeyboardInterrupt:
+    print("Exited.")
+finally:
+    ser.close()

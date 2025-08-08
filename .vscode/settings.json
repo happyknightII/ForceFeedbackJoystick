@@ -1,4 +1,14 @@
 {
-    "cmake.enabled": false
+    "cmake.enabled": false,
+    "files.associations": {
+      "motor_control.h": "c",
+      "esp_log.h": "c",
+      "pin_config.h": "c",
+      "adc.h": "c",
+      "esp_adc_cal.h": "c",
+      "freertos.h": "c",
+      "task.h": "c",
+      "as5600.h": "c"
+    }
   }
   
