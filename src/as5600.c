@@ -60,6 +60,9 @@ float as5600_read_angle_deg(void) {
     return (raw * 360.0f) / 4096.0f;
 }
 
+float as5600_read_angle_rad(void) {
+    return  as5600_read_angle_deg() * (2.0 * M_PI / 360.0f);
+}
 
 
 float compute_velocity(float current_angle_rad) {
