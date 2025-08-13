@@ -64,7 +64,7 @@ static void control_task(void*) {
 
 // ---------- COMMS TASK (reads serial, prints telemetry) ----------
 static void comms_task(void*) {
-  const uint32_t downsample = 10; // ~100Hz if ctrl loop ~1kHz
+  const uint32_t downsample = 100; // ~100Hz if ctrl loop ~1kHz
   uint32_t cnt = 0;
   static char line[160];
 
@@ -116,7 +116,7 @@ extern "C" void app_main(void) {
   motor.voltage_sensor_align = 2;
   motor.LPF_velocity.Tf = 0.9f;
   motor.current_limit = 1.5f;
-  motor.zero_electric_angle = 6.16967f;
+  motor.zero_electric_angle = 0.0122724f;
   motor.velocity_limit = 45.0f;
   motor.sensor_offset = 0;
   motor.torque_controller = TorqueControlType::voltage;
@@ -126,6 +126,8 @@ extern "C" void app_main(void) {
   // Commander registration
   commander.add(MOTOR_ID, doMotor, (char*)"motor");
   commander.verbose = VerboseMode::machine_readable;
+
+  motor.useMonitoring(Serial);
 
   motor.init();
   motor.initFOC();
