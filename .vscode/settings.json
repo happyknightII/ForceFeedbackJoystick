@@ -10,7 +10,10 @@
       "task.h": "c",
       "as5600.h": "c",
       "foc.h": "c",
-      "math.h": "c"
+      "math.h": "c",
+      "stdio.h": "c",
+      "mcpwm_prelude.h": "c",
+      "stdbool.h": "c"
     }
   }
   
